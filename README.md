@@ -21,3 +21,4 @@ Polly 熔断重试，个人建议先看该博客 [ASP.NET Core 微服务初探[2
 
 # Change Log
 #### 2020.4.20 Add webproxy and create FileSize question ,Finsh the Video Download Info Craw
+#### 2020.4.21 Add the Polly Nuget and request three time and error tip on Console view
