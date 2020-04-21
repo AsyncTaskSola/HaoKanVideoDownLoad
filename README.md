@@ -1,5 +1,5 @@
 # HaoKanVideoDownLoad
-### 下载百度好看视频测试
+### 下载百度好看视频
 [![GitHub issues](https://img.shields.io/github/issues/AsyncTaskSola/HaoKanVideoDownLoad)](https://github.com/AsyncTaskSola/HaoKanVideoDownLoad/issues)
 [![GitHub forks](https://img.shields.io/github/forks/AsyncTaskSola/HaoKanVideoDownLoad)](https://github.com/AsyncTaskSola/HaoKanVideoDownLoad/network)
 [![GitHub stars](https://img.shields.io/github/stars/AsyncTaskSola/HaoKanVideoDownLoad)](https://github.com/AsyncTaskSola/HaoKanVideoDownLoad/stargazers)
@@ -14,7 +14,7 @@
 需要安装Nuget Polly，HTTPAgilityPack(或HTTP) 
 Polly 熔断重试，个人建议先看该博客 [ASP.NET Core 微服务初探[2]：熔断降级之Polly](https://www.cnblogs.com/lonelyxmas/p/10236933.html) 
 
- - 1. 默认系统代理端口绑定 127.0.0.1 8080  修正http请求版本 2.0支持 修复线程自定义支持
+- 1.默认系统代理端口绑定 127.0.0.1 8080  修正http请求版本 2.0支持 修复线程自定义支持
 
 
 
