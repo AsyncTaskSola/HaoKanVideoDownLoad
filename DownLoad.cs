@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using DownLoadHaoKanVideo.VideoEntity;
 using HtmlAgilityPack;
@@ -15,8 +16,10 @@ namespace DownLoadHaoKanVideo
 {
     public class DownLoad
     {
-        public int _threadCound { get; set; }
-        public int _byteArraySize { get; set; }
+        private readonly int _threadCound;
+        /// 每次请求默认1024K
+        /// </summary>
+        private readonly int _byteArraySize;
         public string _basePath { get; set; }
 
         public HttpClient Client { get; set; }
@@ -136,6 +139,44 @@ namespace DownLoadHaoKanVideo
         private void MultithreadDownload(string url, long fileSize, DataEntity info)
         {
             long fileLocation = 0;
+            if (fileSize == 0)
+            {
+                return;
+            }
+            //参考https://www.cnblogs.com/yeqifeng2288/p/11378744.html
+            // 不要意外复制。每个实例都是独立的。
+            var spinlock =new SpinLock();
+            var tasklink=new List<Task>();
+            var token =new CancellationTokenSource();//取消操作
+            var ct = token.Token;
+            for (int i = 0; i < _threadCound; i++)
+            {
+                var task = Task.Run(async () =>
+                {
+                    long startposition, endposition;
+                    while (fileSize > fileLocation)
+                    {
+                        if (ct.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        var lockcase = false;
+                        spinlock.Enter(ref lockcase);
+                        startposition = fileLocation;
+                        endposition = startposition + _byteArraySize - 1;
+                        if (endposition > fileSize)
+                        {
+                            endposition = fileSize;
+                        }
+                        fileLocation = endposition;
+                        spinlock.Exit();
+                        var result=
+                    }
+                });
+                tasklink.Add(task);
+            }
+
         }
 
 
