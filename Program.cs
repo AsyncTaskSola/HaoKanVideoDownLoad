@@ -15,19 +15,17 @@ namespace DownLoadHaoKanVideo
         static async Task Main(string[] args)
         {
             var download=new DownLoad(8,webProxy: new WebProxy("127.0.0.1",1080));
-            await download.AutomationGo("https://haokan.baidu.com/v?vid=13494221573256629561&tab=");
-            Console.ReadLine();
-
-
+            //await download.AutomationGo("https://haokan.baidu.com/v?vid=13494221573256629561&tab=");
+            //Console.ReadLine();
             if (!File.Exists("Video/list.txt"))
             {
                 using var system = File.Create("Video/list.txt");
                 return;
             }
 
-            if (File.Exists("Video/list.txt"))
+            if (File.Exists("Videos/List.log"))
             {
-                foreach (var json in File.ReadAllLines("Video/list.txt"))
+                foreach (var json in File.ReadAllLines("Videos/List.log"))
                 {
                     if (string.IsNullOrWhiteSpace(json))
                     {
@@ -38,7 +36,6 @@ namespace DownLoadHaoKanVideo
                     Downloadlist.Add(info);
                 }
             }
-
             var lins = File.ReadAllLines("Video/list.txt");
             foreach (var url in lins)
             {
@@ -46,16 +43,13 @@ namespace DownLoadHaoKanVideo
                try
                {
                     await download.AutomationGo(url);
-                }
+               }
                catch (Exception e)
                {
                    Console.WriteLine(e);
-                   throw;
                }
             }
-
-
-
+            Console.ReadKey();
         }
     }
 }

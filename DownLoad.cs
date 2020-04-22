@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -20,15 +21,18 @@ namespace DownLoadHaoKanVideo
         /// 每次请求默认1024K
         /// </summary>
         private readonly int _byteArraySize;
-        public string _basePath { get; set; }
+        public string _basePath = "Videos/";
 
         public HttpClient Client { get; set; }
         /// <summary>
         /// 当前视频路径。
         /// </summary>
         public string _currentVideoPath;
+        /// <summary>
+        /// 已下载。
+        /// </summary>
+        private long _downloaded = 0;
 
-        public int _DounCount;
         /// <summary>
         /// Ctor
         /// </summary>
@@ -77,11 +81,11 @@ namespace DownLoadHaoKanVideo
             doc.LoadHtml(html);
             var downloadurl = Regex.Match(html, "<video class=\"video\" src=(.*?)></video>").Groups[1].Value;
             var title = doc.DocumentNode.SelectSingleNode("//h2/text()").InnerText;
-            var VideoInfo = doc.DocumentNode.SelectSingleNode("//span class=\"videoinfo-playnums float-left\"").InnerText;
-            Console.WriteLine($"下载链接为{downloadurl},标题为{title},视频信息为{VideoInfo}");
+            var VideoInfo = doc.DocumentNode.SelectSingleNode("//span[@class=\"videoinfo-playnums float-left\"]").InnerText;
+            Console.WriteLine($"下载链接为{downloadurl}\n,标题为{title}\n,视频信息为{VideoInfo}\n");
             return new DataEntity
             {
-                DownLoadUrl = GetMd5(downloadurl),
+                DownLoadUrl = downloadurl,
                 Title = title,
                 VideoInfo = VideoInfo
             };
@@ -124,16 +128,12 @@ namespace DownLoadHaoKanVideo
             {
                 Directory.CreateDirectory(_basePath);
             }
-            using var filestream=new FileStream(_currentVideoPath,FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite);
+            using var filestream = new FileStream(_currentVideoPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
             var count = data.FileSize / 1024 / 1024;
-            _DounCount = 0;
+            _downloaded = 0;
             Console.WriteLine($"创建文件：{_currentVideoPath},大小{count}MB");
             filestream.SetLength(data.FileSize);
         }
-
-
-
-
 
         #region 重点
         private void MultithreadDownload(string url, long fileSize, DataEntity info)
@@ -145,9 +145,9 @@ namespace DownLoadHaoKanVideo
             }
             //参考https://www.cnblogs.com/yeqifeng2288/p/11378744.html
             // 不要意外复制。每个实例都是独立的。
-            var spinlock =new SpinLock();
-            var tasklink=new List<Task>();
-            var token =new CancellationTokenSource();//取消操作
+            var spinlock = new SpinLock();
+            var tasklink = new List<Task>();
+            var token = new CancellationTokenSource();//取消操作
             var ct = token.Token;
             for (int i = 0; i < _threadCound; i++)
             {
@@ -160,26 +160,66 @@ namespace DownLoadHaoKanVideo
                         {
                             break;
                         }
-
                         var lockcase = false;
                         spinlock.Enter(ref lockcase);
                         startposition = fileLocation;
-                        endposition = startposition + _byteArraySize - 1;
+                        endposition = startposition + _byteArraySize - 1; //1-9/10-19
                         if (endposition > fileSize)
                         {
                             endposition = fileSize;
                         }
                         fileLocation = endposition;
                         spinlock.Exit();
-                        var result=
+                        var result = await HttpRetryPolicy.DownPolicyTask(async () =>
+                        {
+                            var buff = await GetDataByte(startposition, endposition);
+                            await SaveVideo(buff, startposition, info);
+                        });
+                        if (!result)
+                        {
+                            token.Cancel();
+                        }
                     }
                 });
                 tasklink.Add(task);
             }
+            Task.WaitAll(tasklink.ToArray());
+            Console.WriteLine("下载完成");
+            if (token.IsCancellationRequested)
+            {
+                DeleteFile(_currentVideoPath);
+                throw new Exception($"下载失败,取消此任务:{info.Title}");
+            }
+            async Task<byte[]> GetDataByte(long startpoint, long endpoint)
+            {
+                var hrm = new HttpRequestMessage(HttpMethod.Get, url)
+                {
+                    Version = new Version(2, 0)
+                };
+                hrm.Headers.Range = new RangeHeaderValue(startpoint, endpoint);
+                var response = await Client.SendAsync(hrm);
+                var buff = await response.Content.ReadAsByteArrayAsync();
+                return buff;
+            }
+        }
+        #endregion
 
+        private async Task SaveVideo(byte[] buff, long postion, DataEntity data)
+        {
+            using var Filesteam = new FileStream($"{_currentVideoPath}", FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite)
+            {
+                Position = postion
+            };
+            await Filesteam.WriteAsync(buff, 0, buff.Length);
+            float count = buff.Length / 1024 / 1024;
+            _downloaded += buff.Length;
+            float percent = (data.FileSize - _downloaded) / (float)data.FileSize;
+            Console.WriteLine($"获得:{count}MB,剩余:{Math.Abs(percent * 100).ToString("f2")}%");
         }
 
-
-        #endregion
+        private void DeleteFile(string path)
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
     }
 }

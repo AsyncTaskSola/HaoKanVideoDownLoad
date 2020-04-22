@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DownLoadHaoKanVideo
 {
-   public  class HttpRetryPolicy
+   public class HttpRetryPolicy
     {
         //参考 https://www.cnblogs.com/lonelyxmas/p/10236933.html
         public static async Task<bool> DownPolicyTask(Func<Task> func)
